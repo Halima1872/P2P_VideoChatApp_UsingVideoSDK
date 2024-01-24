@@ -14,7 +14,7 @@ import {
 import ReactPlayer from "react-player";
 
 
-function Controls() {
+function Controls({ toggleScreenShare }) {
   const { leave, toggleMic, toggleWebcam } = useMeeting();
   const [isCameraOff, setIsCameraOff] = useState(false)
   const [isMicMuted, setIsMicMuted] = useState(false)
@@ -30,29 +30,39 @@ function Controls() {
     setIsMicMuted((prevIsMicMuted) => !prevIsMicMuted);
   };
 
+  const handleToggleScreenShare = () => {
+    toggleScreenShare();
+  };
+
   return (
     <>
       <div id="controls">
-      <div className={isCameraOff ? "OFF" : "control-container"} onClick={handleCameraClick} id="camera-btn">
-        <img src="/icons/camera.png" alt="Camera" />
+        <div className={isCameraOff ? "OFF" : "control-container"} onClick={handleCameraClick} id="camera-btn">
+          <img src="/icons/camera.png" alt="Camera" />
+        </div>
+        <div className={isMicMuted ? "OFF" : "control-container"} onClick={handleMicClick} id="mic-btn">
+          <img src="/icons/mic.png" alt="Microphone" />
+        </div>
+        <div className="control-container" style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }} onClick={handleToggleScreenShare} >
+          <img src="/icons/screen.png" alt="Hang Up" />
+        </div>
+        <div className="control-container" id="leave-btn" onClick={() => leave()}>
+          <img src="/icons/phone.png" alt="Hang Up" />
+        </div>
+
       </div>
-      <div className={isMicMuted ? "OFF" : "control-container"} onClick={handleMicClick} id="mic-btn">
-        <img src="/icons/mic.png" alt="Microphone" />
+      <div>
+        <p className="mid">Meeting Id: {meetingId}</p>
       </div>
-      <div className="control-container" id="leave-btn" onClick={() => leave()}>
-        <img src="/icons/phone.png" alt="Hang Up" />
-      </div>
-    </div>
-    <div>
-    <p className="mid"  >Meeting Id: {meetingId}</p>
-    </div>
     </>
-    
-    
+
+
   );
 }
+//Responsible for rendering the audio and video of each participant on our page
 function ParticipantView(props) {
   const micRef = useRef(null);
+
   const { webcamStream, micStream, webcamOn, micOn, isLocal, displayName } =
     useParticipant(props.participantId);
 
@@ -83,45 +93,131 @@ function ParticipantView(props) {
   }, [micStream, micOn]);
 
   return (
-    <div className="participant-view">
-      
+    <div className={isLocal ? "local-video" : "participant-view"}>
+
       <audio ref={micRef} autoPlay playsInline muted={isLocal} />
       <div className="participant-video">
-      {webcamOn && (
-        <ReactPlayer
-          //
-          playsinline // very very imp prop
-          pip={false}
-          light={false}
-          controls={false}
-          muted={true}
-          playing={true}
-          //
-          url={videoStream}
-          //
-          height={"100%"}
-          width={"100%"}
-          onError={(err) => {
-            console.log(err, "participant video error");
-          }}
-        />
-      )}
+        {webcamOn && (
+          <ReactPlayer
+            //
+            playsinline // very very imp prop
+            pip={false}
+            light={false}
+            controls={false}
+            muted={true}
+            playing={true}
+            //
+            url={videoStream}
+            //
+            height={"100%"}
+            width={"100%"}
+            onError={(err) => {
+              console.log(err, "participant video error");
+            }}
+          />
+        )}
       </div>
-      <p className="participant-name">
+      { !isLocal && <p className="participant-name">
         {displayName} | Webcam: {webcamOn ? "ON" : "OFF"} | Mic:{" "}
-        {micOn ? "ON" : "OFF"} 
-      </p>
-      
+        {micOn ? "ON" : "OFF"}
+      </p>}
+
     </div>
   );
 }
 
+const PresenterView = ({ presenterId }) => {
+  const { screenShareAudioStream, isLocal, screenShareStream, screenShareOn, displayName } = useParticipant(presenterId);
+
+  //Creating a media stream from the screen share stream
+  const mediaStream = useMemo(() => {
+    if (screenShareOn && screenShareStream) {
+      const mediaStream = new MediaStream();
+      mediaStream.addTrack(screenShareStream.track);
+      return mediaStream;
+    }
+  }, [screenShareStream, screenShareOn]);
+
+  const audioPlayer = useRef();
+
+  useEffect(() => {
+    if (
+      !isLocal &&
+      audioPlayer.current &&
+      screenShareOn &&
+      screenShareAudioStream
+    ) {
+      const mediaStream = new MediaStream();
+      mediaStream.addTrack(screenShareAudioStream.track);
+
+      audioPlayer.current.srcObject = mediaStream;
+      audioPlayer.current.play().catch((err) => {
+        if (
+          err.message ===
+          "play() failed because the user didn't interact with the document first. https://goo.gl/xX8pDD"
+        ) {
+          console.error("audio" + err.message);
+        }
+      });
+    } else {
+      audioPlayer.current.srcObject = null;
+    }
+  }, [screenShareAudioStream, screenShareOn, isLocal]);
+
+  return (
+    <>
+      <div className="participant-view">
+        <div className="participant-video">
+          <ReactPlayer
+            //
+            playsinline // very very imp prop
+            playIcon={<></>}
+            //
+            pip={false}
+            light={false}
+            controls={false}
+            muted={true}
+            playing={true}
+            //
+            url={mediaStream} // passing mediastream here
+            //
+            height={"100%"}
+            width={"100%"}
+            
+            onError={(err) => {
+              console.log(err, "presenter video error");
+            }}
+          />
+        </div>
+        <p className="participant-name">
+        {displayName} is currently presenting
+      </p>
+      </div>
+      <audio autoPlay playsInline controls={false} ref={audioPlayer} />
+    </>
+  );
+};
+
+
 function MeetingView(props) {
   const [joined, setJoined] = useState(null);
   const navigate = useNavigate();
+
+  function onPresenterChanged(presenterId) {
+    if (presenterId) {
+      console.log(presenterId, "started screen share");
+      
+    } else {
+      console.log("someone stopped screen share");
+      
+    }
+  }
   //Get the method which will be used to join the meeting.
   //We will also get the participants list to display all participants
-  const { join, participants } = useMeeting({
+  const { join, participants, toggleScreenShare, presenterId } = useMeeting({
+
+    onPresenterChanged,
+
     //callback for when meeting is joined successfully
     onMeetingJoined: () => {
       setJoined("JOINED");
@@ -139,57 +235,55 @@ function MeetingView(props) {
 
   return (
     <div className="container">
-      
+
       {joined && joined == "JOINED" ? (
         <div className="participant-container">
-          
+
           {[...participants.keys()].map((participantId) => (
             <ParticipantView
               participantId={participantId}
               key={participantId}
             />
           ))}
-          <Controls />
-          
+          {presenterId && <PresenterView presenterId={presenterId} />}
+          <Controls toggleScreenShare={toggleScreenShare} />
+
         </div>
       ) : joined && joined == "JOINING" ? (
-        <p>Joining the meeting...</p>
+        <p className="noRemote">Joining the meeting...</p>
       ) : (
         <>
-        <p className="noRemote" >Meeting Id: {props.meetingId}</p>
-        <button className="startCall" onClick={joinMeeting}>Join</button>
+          <p className="noRemote" >Meeting Id: {props.meetingId}</p>
+          <button className="startCall" onClick={joinMeeting}>Join</button>
         </>
-        
+
       )}
     </div>
   );
 }
 
 
-const VideoCall = () =>{
+const VideoCall = () => {
   const { meetingId } = useParams();
   const { user } = useContext(AuthContext);
   const username = user
   console.log(username)
 
-  return authToken &&  (
+  return authToken && (
     <>
-    <div className="video-call-container">
-    <MeetingProvider
-      config={{
-        meetingId,
-        micEnabled: true,
-        webcamEnabled: true,
-        name: username,
-      }}
-      token={authToken}
-    >
-      <MeetingView meetingId={meetingId}  />
-    </MeetingProvider>
-
-    </div>
-
-
+      
+        <MeetingProvider
+          config={{
+            meetingId,
+            micEnabled: true,
+            webcamEnabled: true,
+            name: username,
+          }}
+          token={authToken}
+        >
+          <MeetingView meetingId={meetingId} />
+        </MeetingProvider>
+        
 
     </>
   )

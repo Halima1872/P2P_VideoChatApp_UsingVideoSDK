@@ -16,6 +16,7 @@
     align-items: center;
     cursor: pointer;
   }
+ 
   
   .OFF {
     background-color: rgb(255, 80, 80, 1);
@@ -26,7 +27,20 @@
     align-items: center;
     cursor: pointer;
   }
-  
+
+  .local-video {
+    width: 15%;
+    height: 18%;
+    max-width: 20%;
+    max-height: 20%;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    border-radius: 8px;
+    object-fit: contain;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  }
   .OFF img {
     height: 25px;
     width: 25px;
@@ -77,51 +91,10 @@
   .mid{
     position: fixed;
     top: 92%;
-    left: 76%;
+    left: 75%;
 
   }
-  /* .participant-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 16px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  .participant-view {
-    padding-top: 0%;
-    width: 100%;
-    height: 100px;
-    padding-bottom: 45%;  
-    position: relative;
-    overflow: hidden;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    margin-top: 30px;
-    
-  }
-  .participant-video {
-    
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute;
-    top: 0;
-    left: 0;
-    border-radius: 8px;
-  }
-
-  .participant-name {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    margin: 0;
-    padding: 8px;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    border-radius: 4px;
-    font-size: 12px;
-    
-  }*/
+  
 
   .participant-container {
     display: flex;
@@ -139,14 +112,17 @@
     position: relative;
     overflow: hidden;
     border-radius: 8px;
+    object-fit: contain;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     margin: 8px; /* Adjust as needed for spacing between participant views */
+    
   }
+  
   
   .participant-video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 8px;
     overflow: hidden;
   }
